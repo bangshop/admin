@@ -1,20 +1,21 @@
 import React from 'react';
-import { Box, Flex, Drawer, DrawerContent, DrawerOverlay, useDisclosure, IconButton } from '@chakra-ui/react';
+// 1. ADD 'Heading' TO THE LIST OF IMPORTS HERE
+import { Box, Flex, Drawer, DrawerContent, DrawerOverlay, useDisclosure, IconButton, Heading } from '@chakra-ui/react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
-import { FiMenu } from 'react-icons/fi'; // Hamburger menu icon
+import { FiMenu } from 'react-icons/fi';
 
 function DashboardLayout() {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
     <Flex>
-      {/* 1. DESKTOP SIDEBAR: Hidden on small screens (base), visible on medium screens and up (md) */}
+      {/* DESKTOP SIDEBAR */}
       <Box display={{ base: 'none', md: 'block' }} position="fixed">
         <Sidebar />
       </Box>
 
-      {/* 2. MOBILE HEADER: Only visible on small screens */}
+      {/* MOBILE HEADER */}
       <Flex
         as="header"
         display={{ base: 'flex', md: 'none' }}
@@ -24,6 +25,9 @@ function DashboardLayout() {
         bg="white"
         boxShadow="sm"
         w="full"
+        position="fixed" // Keep header at the top
+        top="0"
+        zIndex="banner"
       >
         <Heading as="h2" size="md" color="teal.500">My Shop Admin</Heading>
         <IconButton
@@ -34,7 +38,7 @@ function DashboardLayout() {
         />
       </Flex>
 
-      {/* 3. MOBILE DRAWER: The sidebar content for mobile */}
+      {/* MOBILE DRAWER */}
       <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
         <DrawerOverlay />
         <DrawerContent>
@@ -42,7 +46,7 @@ function DashboardLayout() {
         </DrawerContent>
       </Drawer>
 
-      {/* 4. MAIN CONTENT: Margin is adjusted for mobile vs desktop */}
+      {/* MAIN CONTENT */}
       <Box ml={{ base: 0, md: '250px' }} p={{ base: 4, md: 8 }} w="full" mt={{ base: '60px', md: 0 }}>
         <Outlet />
       </Box>
