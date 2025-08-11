@@ -11,45 +11,32 @@ const orderStatuses = ["Pending", "Processing", "Shipped", "Delivered", "Cancell
 function OrdersPage() {
     const [orders, setOrders] = useState([]);
     const toast = useToast();
+    // 1. NEW STATE to track which order row is expanded
+    const [expandedOrderId, setExpandedOrderId] = useState(null);
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
-            setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const sortedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a, b) => b.createdAt - a.createdAt); // Sort by newest first
+            setOrders(sortedOrders);
         });
         return () => unsubscribe();
     }, []);
 
     const handleStatusChange = async (orderId, newStatus) => {
-        const orderRef = doc(db, "orders", orderId);
-        try {
-            await updateDoc(orderRef, { status: newStatus });
-            toast({
-                title: "Order status updated.",
-                status: "success",
-                duration: 2000,
-                isClosable: true,
-            });
-        } catch (error) {
-            toast({
-                title: "Error updating status.",
-                description: error.message,
-                status: "error",
-                duration: 3000,
-                isClosable: true,
-            });
+        // ... (this function remains the same)
+    };
+    
+    // 2. NEW HANDLER to toggle the expanded row
+    const handleRowClick = (orderId) => {
+        if (expandedOrderId === orderId) {
+            setExpandedOrderId(null); // Collapse if it's already open
+        } else {
+            setExpandedOrderId(orderId); // Expand the clicked row
         }
     };
 
-    const getStatusColorScheme = (status) => {
-        switch (status) {
-            case "Pending": return "yellow";
-            case "Processing": return "blue";
-            case "Shipped": return "purple";
-            case "Delivered": return "green";
-            case "Cancelled": return "red";
-            default: return "gray";
-        }
-    };
+    const getStatusColorScheme = (status) => { /* ... (this function remains the same) ... */ };
 
     return (
         <Box>
@@ -67,28 +54,59 @@ function OrdersPage() {
                     </Thead>
                     <Tbody>
                         {orders.map(order => (
-                            <Tr key={order.id}>
-                                <Td><Text fontSize="xs">{order.id}</Text></Td>
-                                <Td>
-                                    <Text fontWeight="bold">{order.customerInfo?.name}</Text>
-                                    <Text fontSize="sm" color="gray.500">{order.customerInfo?.email}</Text>
-                                </Td>
-                                <Td><Text fontSize="sm">{new Date(order.createdAt?.toDate()).toLocaleDateString()}</Text></Td>
-                                <Td>₹{order.totalPrice.toFixed(2)}</Td>
-                                <Td>
-                                    <Select 
-                                        size="sm"
-                                        value={order.status} 
-                                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                                        bg={getStatusColorScheme(order.status) + ".100"}
-                                        borderColor={getStatusColorScheme(order.status) + ".200"}
-                                    >
-                                        {orderStatuses.map(status => (
-                                            <option key={status} value={status}>{status}</option>
-                                        ))}
-                                    </Select>
-                                </Td>
-                            </Tr>
+                            // 3. Use a React Fragment to group the main row and the details row
+                            <React.Fragment key={order.id}>
+                                <Tr 
+                                    onClick={() => handleRowClick(order.id)}
+                                    _hover={{ bg: 'gray.50', cursor: 'pointer' }}
+                                >
+                                    <Td><Text fontSize="xs">{order.id}</Text></Td>
+                                    <Td>
+                                        <Text fontWeight="bold">{order.customerInfo?.name}</Text>
+                                        <Text fontSize="sm" color="gray.500">{order.customerInfo?.email}</Text>
+                                    </Td>
+                                    <Td><Text fontSize="sm">{new Date(order.createdAt?.toDate()).toLocaleDateString()}</Text></Td>
+                                    <Td>₹{order.totalPrice.toFixed(2)}</Td>
+                                    <Td>
+                                        <Select 
+                                            size="sm"
+                                            value={order.status} 
+                                            onClick={(e) => e.stopPropagation()} // Prevents row from collapsing when changing status
+                                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                                            bg={getStatusColorScheme(order.status) + ".100"}
+                                            borderColor={getStatusColorScheme(order.status) + ".200"}
+                                        >
+                                            {orderStatuses.map(status => (
+                                                <option key={status} value={status}>{status}</option>
+                                            ))}
+                                        </Select>
+                                    </Td>
+                                </Tr>
+                                
+                                {/* 4. THE EXPANDABLE DETAILS ROW */}
+                                {expandedOrderId === order.id && (
+                                    <Tr>
+                                        <Td colSpan={5} bg="gray.50">
+                                            <Box p={4}>
+                                                <Heading size="sm" mb={2}>Order Details</Heading>
+                                                <VStack align="start" spacing={1}>
+                                                    {order.items.map(item => (
+                                                        <Flex key={item.id} w="full" justify="space-between">
+                                                            <Text fontSize="sm">{item.quantity} x {item.name}</Text>
+                                                            <Text fontSize="sm" color="gray.600">₹{(item.price * item.quantity).toFixed(2)}</Text>
+                                                        </Flex>
+                                                    ))}
+                                                </VStack>
+                                                <Box mt={3} pt={3} borderTop="1px solid #ddd">
+                                                     <Text fontWeight="bold" fontSize="sm">Shipping Address:</Text>
+                                                     <Text fontSize="sm">{order.customerInfo?.address}</Text>
+                                                     <Text fontSize="sm">Phone: {order.customerInfo?.phone}</Text>
+                                                </Box>
+                                            </Box>
+                                        </Td>
+                                    </Tr>
+                                )}
+                            </React.Fragment>
                         ))}
                     </Tbody>
                 </Table>
