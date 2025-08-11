@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../firebaseConfig';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { db, auth } from '../firebaseConfig';
+import { useAuth } from '../context/AuthContext'; // 1. Import useAuth
+import { signOut } from 'firebase/auth'; // We only need signOut
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import axios from 'axios';
 import {
-  Box, Container, Heading, Button, Flex, VStack,
+  Box, Container, Heading, Button, Flex, VStack, Spinner, Center,
   Input, Textarea, Select, FormControl, FormLabel,
   Image, Text, useToast, HStack, Tag, TagLabel, TagCloseButton, SimpleGrid
 } from '@chakra-ui/react';
@@ -13,7 +14,7 @@ import {
 function Dashboard() {
   const navigate = useNavigate();
   const toast = useToast();
-  const [user, setUser] = useState(null);
+  const { currentUser } = useAuth(); // 2. Get the current user from our context
 
   // Data State
   const [products, setProducts] = useState([]);
@@ -32,17 +33,8 @@ function Dashboard() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryImage, setCategoryImage] = useState(null);
 
-  // Check auth state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      } else {
-        navigate('/');
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
+  // 3. The old onAuthStateChanged useEffect has been completely removed.
+  // The ProtectedRoute component now handles this.
 
   // Fetch products
   useEffect(() => {
@@ -76,7 +68,9 @@ function Dashboard() {
   const resetProductForm = () => {
     setProductName(''); setProductPrice(''); setProductDesc(''); 
     setProductImage(null); setProductCategory(''); setEditingProduct(null);
-    document.getElementById('product-image-input').value = null;
+    if(document.getElementById('product-image-input')) {
+      document.getElementById('product-image-input').value = null;
+    }
   };
 
   const handleProductSubmit = async (e) => {
@@ -160,8 +154,15 @@ function Dashboard() {
       await deleteDoc(doc(db, "categories", id));
       toast({ title: 'Category deleted!', status: 'warning' });
   };
-
-  if (!user) return <div>Loading...</div>;
+  
+  // 4. Use a Spinner for a better loading experience while currentUser is being checked
+  if (!currentUser) {
+    return (
+      <Center h="100vh">
+        <Spinner size="xl" />
+      </Center>
+    );
+  }
 
   return (
     <Box bg="gray.50" minH="100vh">
@@ -243,7 +244,6 @@ function Dashboard() {
                   </VStack>
               </Box>
 
-              {/* **THIS IS THE UPDATED ORDERS LIST** */}
               <Box p={6} bg="white" borderRadius="lg" boxShadow="md">
                   <Heading as="h2" size="lg" mb={4}>Incoming Orders</Heading>
                   <VStack divider={<Box border="1px solid #eee" w="100%"/>} spacing={4} align="stretch">
@@ -258,12 +258,11 @@ function Dashboard() {
                                     {new Date(order.createdAt?.toDate()).toLocaleString()}
                                 </Text>
                         
-                                {/* Customer Info Section */}
                                 <Box mt={2} p={2} bg="gray.100" borderRadius="md">
-                                    <Text fontSize="sm" fontWeight="bold">{order.customerInfo.name}</Text>
-                                    <Text fontSize="sm">{order.customerInfo.email}</Text>
-                                    <Text fontSize="sm">{order.customerInfo.phone}</Text>
-                                    <Text fontSize="sm">{order.customerInfo.address}</Text>
+                                    <Text fontSize="sm" fontWeight="bold">{order.customerInfo?.name}</Text>
+                                    <Text fontSize="sm">{order.customerInfo?.email}</Text>
+                                    <Text fontSize="sm">{order.customerInfo?.phone}</Text>
+                                    <Text fontSize="sm">{order.customerInfo?.address}</Text>
                                 </Box>
                         
                                 <VStack align="start" mt={2} pl={4} spacing={0}>
