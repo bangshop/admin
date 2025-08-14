@@ -5,18 +5,21 @@ import axios from 'axios';
 import {
   Box, Heading, Button, Flex, VStack, SimpleGrid,
   Input, Textarea, Select, FormControl, FormLabel,
-  Image, Text, useToast, HStack
+  Image, Text, useToast, HStack, NumberInput, NumberInputField
 } from '@chakra-ui/react';
 
 function ProductsPage() {
     const toast = useToast();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    
+    // Form State
     const [productName, setProductName] = useState('');
     const [productPrice, setProductPrice] = useState('');
     const [productDesc, setProductDesc] = useState('');
-    const [productImage, setProductImage] = useState(null);
+    const [productStock, setProductStock] = useState(''); // <-- NEW STATE FOR STOCK
     const [productCategory, setProductCategory] = useState('');
+    const [productImage, setProductImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
 
     useEffect(() => {
@@ -33,8 +36,9 @@ function ProductsPage() {
     }, []);
 
     const resetProductForm = () => {
-      setProductName(''); setProductPrice(''); setProductDesc(''); 
-      setProductImage(null); setProductCategory(''); setEditingProduct(null);
+      setProductName(''); setProductPrice(''); setProductDesc('');
+      setProductStock(''); setProductCategory(''); setEditingProduct(null);
+      setProductImage(null);
       if(document.getElementById('product-image-input')) {
         document.getElementById('product-image-input').value = null;
       }
@@ -42,8 +46,8 @@ function ProductsPage() {
   
     const handleProductSubmit = async (e) => {
       e.preventDefault();
-      if (!productName || !productPrice || !productDesc || !productCategory) {
-        toast({ title: "Please fill all product fields, including category.", status: 'error' });
+      if (!productName || !productPrice || !productDesc || !productCategory || productStock === '') {
+        toast({ title: "Please fill all fields, including stock.", status: 'error' });
         return;
       }
       
@@ -62,8 +66,12 @@ function ProductsPage() {
       }
   
       const productData = {
-          name: productName, price: parseFloat(productPrice),
-          description: productDesc, category: productCategory, imageUrl: imageUrl
+          name: productName,
+          price: parseFloat(productPrice),
+          description: productDesc,
+          category: productCategory,
+          imageUrl: imageUrl,
+          stock_quantity: parseInt(productStock, 10) // <-- ADD STOCK TO DATA
       };
   
       if (editingProduct) {
@@ -77,9 +85,12 @@ function ProductsPage() {
     };
     
     const handleEditProduct = (product) => {
-      setEditingProduct(product); setProductName(product.name);
-      setProductPrice(product.price); setProductDesc(product.description);
+      setEditingProduct(product);
+      setProductName(product.name);
+      setProductPrice(product.price);
+      setProductDesc(product.description);
       setProductCategory(product.category);
+      setProductStock(product.stock_quantity || 0); // <-- SET STOCK FOR EDITING
     };
   
     const handleDeleteProduct = async (id) => {
@@ -96,7 +107,20 @@ function ProductsPage() {
               <form onSubmit={handleProductSubmit}>
                 <VStack spacing={4}>
                   <FormControl isRequired><FormLabel>Product Name</FormLabel><Input value={productName} onChange={e => setProductName(e.target.value)}/></FormControl>
-                  <FormControl isRequired><FormLabel>Product Price</FormLabel><Input type="number" value={productPrice} onChange={e => setProductPrice(e.target.value)}/></FormControl>
+                  <HStack w="full">
+                    <FormControl isRequired>
+                      <FormLabel>Price</FormLabel>
+                      <NumberInput value={productPrice} onChange={(val) => setProductPrice(val)}>
+                        <NumberInputField />
+                      </NumberInput>
+                    </FormControl>
+                    <FormControl isRequired>
+                      <FormLabel>Stock Quantity</FormLabel> {/* <-- NEW STOCK INPUT */}
+                      <NumberInput value={productStock} onChange={(val) => setProductStock(val)}>
+                        <NumberInputField />
+                      </NumberInput>
+                    </FormControl>
+                  </HStack>
                   <FormControl isRequired><FormLabel>Product Description</FormLabel><Textarea value={productDesc} onChange={e => setProductDesc(e.target.value)}/></FormControl>
                   <FormControl isRequired>
                     <FormLabel>Category</FormLabel>
@@ -119,6 +143,7 @@ function ProductsPage() {
                             <Box flex="1">
                                 <Text fontWeight="bold">{product.name}</Text>
                                 <Text fontSize="sm">₹{product.price} - <Text as="span" color="gray.500">{product.category}</Text></Text>
+                                <Text fontSize="sm" fontWeight="bold">Stock: {product.stock_quantity ?? 'N/A'}</Text> {/* <-- DISPLAY STOCK */}
                             </Box>
                             <HStack>
                                 <Button size="sm" onClick={() => handleEditProduct(product)}>Edit</Button>
